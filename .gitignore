@@ -1,1 +1,6 @@
 IEMOCAP_full_release
+cv_corpus_v1
+.ipynb_checkpoints
+.idea/*
+models/__pycache__/*
+utils/__pycache__/*
