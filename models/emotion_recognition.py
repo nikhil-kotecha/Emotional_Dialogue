@@ -117,7 +117,7 @@ class ClassifyEmotion():
                     print('Epoch {} validation loss'.format(val_err))
 
             val_predictions = sess.run(logits, feed_dict={x: val_x})
-            
+
         save_path = saver.save(sess, 'final_model/emotion_recognition.ckpt')
         return val_predictions
 

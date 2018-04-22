@@ -20,7 +20,7 @@ class ListenAttendSpell():
         self.learning_rate = learning_rate
 
 
-    def _build_model(self, enc_input, dec_input):
+    def _build_train_model(self, enc_input, dec_input):
         """
         Listen, Attend, and Spell model
         """
@@ -40,38 +40,30 @@ class ListenAttendSpell():
             pblstm3, enc_state = pblstm(index=3, num_hidden=256, input_x=pblstm2,
                              return_all=True, return_state=True )
 
-        # with tf.name_scope('attend'):
-        #     # Attention states are [batch_size, seq_length, embed_dimension]
-        #     attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(
-        #         num_units=256, memory=pblstm3, memory_seq_length=2000, normalize=True)
-        #     cell = tf.contrib.rnn.LSTMCell(num_units=256)
-        #     attention_cell = tf.contrib.seq2seq.AttentionWrapper(
-        #         cell, attention_mechanism, attention_layer_size=256//2)
-        #     out_cell = tf.contrib.rnn.OutputProjectionWrapper(
-        #         attention_cell, 26, reuse=reuse)
+        with tf.name_scope('attend'):
+            # Attention states are [batch_size, seq_length, embed_dimension]
+            attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(
+                num_units=256, memory=pblstm3, memory_seq_length=2000, normalize=True)
+            cell = tf.contrib.rnn.LSTMCell(num_units=256)
+            attention_cell = tf.contrib.seq2seq.AttentionWrapper(
+                cell, attention_mechanism, attention_layer_size=256//2)
+            out_cell = tf.contrib.rnn.OutputProjectionWrapper(
+                attention_cell, 26, reuse=reuse)
 
         with tf.name_scope('spell'):
              with tf.variable_scope('decoder'):
                  decoder_cell = tf.nn.rnn_cell.BasicLSTMCell(512)
-                 helper = tf.contrib.seq2seq.TrainingHelper(dec_input,
-                                                            self.max_output_seq_length)
-                 decoder = tf.contrib.seq2seq.BasicDecoder(
-                     decoder_cell, helper, enc_state)
-                 outputs,_ = tf.contrib.seq2seq.dynamic_decode(decoder)
-                 logits = outputs.rnn_output
-
 
                  # The paper uses a 10% scheduled sampling rate
                  # Scheduled sampling is when the decoder reads from the predicted output
                  # rather than the ground truth
-                 # helper = tf.contrib.seq2seq.ScheduledOutputTrainingHelper(
-                 #     sampling_probability=0.1, name='training_helper'
-                 # )
-                 # decoder = tf.contrib.seq2seq.BasicDecoder(out_cell, helper,
-                 #                                           initial_state=out_cell.zero_state(
-                 #                                               dtype=tf.float32))
-                 # outputs = tf.contrib.seq2seq.dynamic_decode(decoder=decoder)
-                 # outputs = outputs[0]
+                 helper = tf.contrib.seq2seq.ScheduledOutputTrainingHelper(
+                     out_cell, sampling_probability=0.1, name='training_helper'
+                 )
+                 decoder = tf.contrib.seq2seq.BasicDecoder(
+                     decoder_cell, helper, enc_state)
+                 outputs,_ = tf.contrib.seq2seq.dynamic_decode(decoder)
+                 logits = outputs.rnn_output
 
 
         with tf.name_scope('loss'):
@@ -102,17 +94,30 @@ class ListenAttendSpell():
             encoder_inputs = tf.placeholder(shape=(None, None, self.input_vocab_size))
             decoder_inputs = tf.placeholder(shape=(None, None, self.output_vocab_size))
 
-        logits, loss = self._build_model(encoder_inputs, decoder_inputs)
+        logits, loss = self._build_train_model(encoder_inputs, decoder_inputs)
         step = self._step(loss)
 
         for epoch in range(epochs):
-            for batch in range(num_batches):
+            batches_losses = []
+            for batch in range(num_batches-1):
                 batch_enc = batched_data[batch]
                 batch_dec = batched_labels[batch]
                 feed_dict = {
                     encoder_inputs: batch_enc,
                     decoder_inputs: batch_dec
                 }
+                _, err = sess.run([step, loss], feed_dict=feed_dict)
+                batches_losses.append(err)
+                if epoch % 2 == 0:
+                    mean_batch_loss = np.mean(batches_losses)
+                    print ('Epoch {} mean loss {}'.format(epoch, mean_batch_loss))
+
+                if epoch % 10 == 0:
+                    val_err = sess.run([merged, loss], feed_dict={x: batched_data[-1],
+                                                                  y: batched_data[-1]})
+                    print('Epoch {} validation loss'.format(val_err))
+                    
+
 
 
 

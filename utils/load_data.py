@@ -167,6 +167,8 @@ def preprocess_common_voice_data(set, use_fbank=True):
         next(reader)
         for line in reader:
             characters = list(line[1])
+            characters.insert('<sos>', 0)
+            characters.append('<eos>')
             labels.append(characters)
 
     audio_path = common_voice_path + 'cv-valid-{}/'.format(set)
