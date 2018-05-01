@@ -116,7 +116,7 @@ class ListenAttendSpell():
                     val_err = sess.run([merged, loss], feed_dict={x: batched_data[-1],
                                                                   y: batched_data[-1]})
                     print('Epoch {} validation loss'.format(val_err))
-                    
+
 
 
 

@@ -148,11 +148,30 @@ def load_sentences(use_fbank=True, max_sequence_length=2000):
 
 common_voice_path = os.path.abspath(os.curdir) + '/cv_corpus_v1/'
 
+def mp3_to_wav(set):
+    """
+    Convert mp3 to wav
+    """
+    audio_path = common_voice_path + 'cv-valid-{}/'.format(set)
+    audio_files = os.listdir(audio_path)
+
+    num_files = len(audio_files)
+    for i, file in enumerate(audio_files):
+        if i % 10000 == 0:
+            print('Processing {} of {} files in {}'.format(i, num_files, set))
+        filename = file.split('.')[0]
+        wav_filename = filename + '.wav'
+        if wav_filename not in audio_files:
+            # Convert mp3 file and save as .wav file
+            sound = pydub.AudioSegment.from_mp3(audio_path +  file)
+            # Delete mp3 file to save space
+            os.remove(audio_path + file)
+            # Save sound as wave file in path
+            sound.export(audio_path + wav_filename, format="wav")
+
+
 def preprocess_common_voice_data(set, use_fbank=True):
     """
-    The first time running this function will take longer since mp3 files are
-    being converted to wav files
-
     Loads audio features for each wave file
     Loads text transcription for each audio clip
 
