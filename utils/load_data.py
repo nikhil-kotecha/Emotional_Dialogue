@@ -1,6 +1,5 @@
 import os
 import re
-import csv
 import string
 from collections import defaultdict, namedtuple
 
@@ -15,13 +14,19 @@ from .feature_extraction import audio_features
 #################################################################
 
 path = os.path.abspath(os.curdir) + '/IEMOCAP_full_release/'
+
+# IEMOCAP data is split into 5 sessions
+# We will combine data from all sessions
 sessions = ['Session1', 'Session2', 'Session3', 'Session4', 'Session5']
+
+# List of possible emotions, we will remove 'xxx' which is unknown
 emotions = ['ang', 'exc', 'fru', 'hap', 'neu', 'sad', 'xxx']
 
 def get_sentence_labels():
     """
     Get emotion labels for each sentence ID
-    :return:
+
+    :return: Dictionary of labels including emotion, valence, and duration of utterance
     """
     labels = defaultdict(dict)
     for session in sessions:
@@ -49,7 +54,7 @@ def get_sentence_transcripts():
     """
     Transcripts of sentences cleaned by removing punctuation and lower casing
 
-    :return:
+    :return: dictionary of sentence transcripts
     """
     transcripts = defaultdict(str)
     regex = re.compile('[%s]' % re.escape(string.punctuation))
@@ -61,7 +66,8 @@ def get_sentence_transcripts():
                 transcript_file = open(transcripts_path + txtfile, 'r')
                 lines = transcript_file.readlines()
 
-                sentence_ids = [line.split(']:')[0][:-2].lstrip().split(' ')[0] for line in lines]
+                sentence_ids = [line.split(']:')[0][:-2].lstrip().split(' ')[0]
+                                for line in lines]
                 sentences = [line.split(']:') for line in lines]
 
                 assert(len(sentence_ids) == len(sentences))
@@ -71,21 +77,47 @@ def get_sentence_transcripts():
     return transcripts
 
 
+def trim_and_pad_transcript(sequence, max_length=100):
+    """
+    Trim transcripts to max_length characters
+    Pad if transcript is not long enough
+
+    :param sequence: input sequence of characters
+    :param max_length: pad character sequence to max_length
+    :return: trimmed or padded sequence
+    """
+    # Insert start of sentence symbol at beginning of sequence
+    sequence.insert(0, '<sos>')
+    orig_seq_length = len(sequence)
+
+    if orig_seq_length >= max_length:
+        sequence = sequence[:max_length-1]
+        sequence.append('<eos>')
+    else:
+        pad = max_length - orig_seq_length - 1
+        for _ in range(pad):
+            sequence.append('<pad>')
+        sequence.append('<eos>')
+    return sequence, orig_seq_length + 1
+
+
 def trim_and_pad_audio_data(sequence, max_length=2000):
     """
     Make audio sequences the same length
-    :return:
+    :return: Trimmed and padded audio to fit max length
     """
     seq_length = sequence.shape[0]
     features = sequence.shape[1]
     if seq_length > max_length:
-        return sequence[:2000, :]
+        return sequence[:max_length, :], max_length
     else:
         pad = np.zeros(shape=(max_length-seq_length, features))
-        return np.concatenate((sequence, pad), axis=0)
+        return np.concatenate((sequence, pad), axis=0), seq_length
 
 
-def load_sentences(use_fbank=True, max_sequence_length=2000):
+def load_sentences(use_fbank=True,
+                   max_sequence_length=2000,
+                   win_len=0.02, win_step=0.01):
     """
     Loads audio for both scripted and improv sentences
     :return: dictionary with sentence ID keys
@@ -95,6 +127,7 @@ def load_sentences(use_fbank=True, max_sequence_length=2000):
     transcripts = get_sentence_transcripts()
 
     sentences = []
+    orig_seq_length = []
     sentences_metadata = []
     labels = []
     Audio = namedtuple('Audio', ['id',
@@ -113,19 +146,22 @@ def load_sentences(use_fbank=True, max_sequence_length=2000):
                 session_path = wav_path + '/' + dir
                 for sentence in os.listdir(session_path):
                     if sentence.endswith('.wav'):
-                        mfcc, fbank = audio_features(session_path + '/' + sentence)
+                        mfcc, fbank = audio_features(session_path + '/' + sentence,
+                                                     win_len, win_step)
                         if use_fbank:
                             audio_data = fbank
                         else:
                             audio_data = mfcc
 
-                        audio_data = trim_and_pad_audio_data(audio_data)
+                        audio_data, seq_length = trim_and_pad_audio_data(audio_data,
+                                                                         max_length=max_sequence_length)
                         sentence_id = sentence.split('.')[0]
 
                         if emotions_labels[sentence_id]['emotion'] != 'xxx':
                             dialog_id = '_'.join(sentence_id.split('_')[:2])
                             transcript = transcripts[sentence_id]
 
+                            orig_seq_length.append(seq_length)
                             sentences.append(audio_data)
                             labels.append(emotions_labels[sentence_id]['emotion'])
 
@@ -137,7 +173,7 @@ def load_sentences(use_fbank=True, max_sequence_length=2000):
                                                       dataset))
         print('Finished data session ' + session)
     sentences = np.stack(sentences, axis=0)
-    return sentences, labels, sentences_metadata
+    return sentences, orig_seq_length, labels, sentences_metadata
 
 
 
@@ -170,64 +206,106 @@ def mp3_to_wav(set):
             sound.export(audio_path + wav_filename, format="wav")
 
 
-def preprocess_common_voice_data(set, use_fbank=True):
+def preprocess_cv_data(audio_files, use_fbank=True):
     """
     Loads audio features for each wave file
     Loads text transcription for each audio clip
 
-    :param set: 'dev', 'train', 'test'
+    :param audio_files: list of files to process
     :param use_fbank: uses fbank features if true, otherwise uses mfcc features
-    :return: List of audio feature data, List of transcription labels
+    :return: Stacked audio feature data, list of original audio lengths
     """
-    labels_path = common_voice_path + 'cv-valid-{}.csv'.format(set)
-    labels = []
-    with open(labels_path, 'r') as f:
-        reader = csv.reader(f)
-        next(reader)
-        for line in reader:
-            characters = list(line[1])
-            characters.insert('<sos>', 0)
-            characters.append('<eos>')
-            labels.append(characters)
-
-    audio_path = common_voice_path + 'cv-valid-{}/'.format(set)
+    audio_path = common_voice_path + 'cv-valid-train/'
     data = []
-    audio_files = os.listdir(audio_path)
+    lengths = []
     for file in audio_files:
         filename = file.split('.')[0]
         wav_filename = filename + '.wav'
-        if wav_filename not in audio_files:
-            # Convert mp3 file and save as .wav file
-            sound = pydub.AudioSegment.from_mp3(audio_path +  file)
-            # Delete mp3 file to save space
-            os.remove(audio_path + file)
-            # Save sound as wave file in path
-            sound.export(audio_path + wav_filename, format="wav")
         # Extract audio features from wav file
         mfcc, fbank = audio_features(audio_path + wav_filename)
         if use_fbank:
             audio_data = fbank
         else:
             audio_data = mfcc
+        # Trim and pad to max length
+        trimmed_data, seq_lengths = trim_and_pad_audio_data(audio_data,
+                                                            max_length=1500)
         # Append to data list
-        data.append(audio_data)
-    return data, labels
+        data.append(trimmed_data)
+        lengths.append(seq_lengths)
+    return np.stack(data), lengths
 
 
-def load_common_voice_data(use_fbank=True, include_test=False):
+def char_to_int(char_sequence):
     """
-
-    :param use_fbank:
-    :param include_test:
-    :return:
+    Convert list of characters to integers
+    :param char_sequence: Sequence of characters
+    :return: Sequence of integers to be used in decoding
     """
-    # get data and labels by train, dev, test
-    train_data, train_labels = preprocess_common_voice_data('train', use_fbank)
-    dev_data, dev_labels = preprocess_common_voice_data('dev', use_fbank)
-    if include_test:
-        test_data, test_labels = preprocess_common_voice_data('test', use_fbank)
-        return train_data, train_labels, dev_data, dev_labels, test_data, test_labels
+    chars = ['<sos>', '<eos>', '<pad>'] + \
+            list('abcdefghijklmnopqrstuvwxyz ') \
+            + list('\'')
+    int_sequence = []
+    for char in char_sequence:
+        int_sequence.append(chars.index(char))
+    return np.array(int_sequence)
+
+
+def int_to_char(int_sequence):
+    """
+    Convert list of integers to corresponding characters
+    :param int_sequence: Sequence of integers
+    :return: Sequence of characters
+    """
+    chars = ['<sos>', '<eos>', '<pad>'] + \
+            list('abcdefghijklmnopqrstuvwxyz ') \
+            + list('\'')
+    char_sequence = []
+    for i in int_sequence:
+        char_sequence.append(chars[i])
+    return char_sequence
+
+
+def load_common_voice_data(use_fbank=True, batch_size=1, load_test=False):
+    """
+    Generator for Common Voice dataset of utterances and transcripts
+
+    :param use_fbank: Transform audio data using fbanks features, otherwise mfcc
+    :param batch_size: number of data points to return
+    :param load_test: If true yield from test set which is set to 20% of original data
+    :yield: tuple of character labels, audio data
+    """
+    audio_path = common_voice_path + 'cv-valid-train/'
+    labels_path = common_voice_path + 'cv-valid-train.csv'
+
+    with open(labels_path, 'r') as f:
+        lines = f.readlines()[1:]
+    characters = [[char for char in line.split(',')[1]]
+                  for line in lines]
+    utterances_and_lengths = [trim_and_pad_transcript(utterance, max_length=100)
+                               for utterance in characters]
+
+    audio_files = os.listdir(audio_path)
+    num_files = len(audio_files)
+    test_size = int(0.2 * num_files)
+
+    # Yield from test set
+    if load_test:
+        for idx in range(0, test_size, batch_size):
+            test_files = audio_files[idx:min(idx + batch_size, test_size)]
+            audio_data, audio_lengths = preprocess_cv_data(test_files, use_fbank=True)
+            characters = utterances_and_lengths[idx:min(idx+batch_size, test_size)]
+            utterances = [char_to_int(item[0]) for item in characters]
+            char_lengths = [item[1] for item in characters]
+            yield (np.stack(utterances), char_lengths, audio_data, audio_lengths)
+
+    # Else yield from training set
     else:
-        return train_data, train_labels, dev_data, dev_labels
-
+        for idx in range(test_size, num_files, batch_size):
+            train_files = audio_files[idx:min(idx + batch_size, num_files)]
+            audio_data, audio_lengths = preprocess_cv_data(train_files, use_fbank=True)
+            characters = utterances_and_lengths[idx:min(idx+batch_size, num_files)]
+            utterances = [char_to_int(item[0]) for item in characters]
+            char_lengths = [item[1] for item in characters]
+            yield (np.stack(utterances), char_lengths, audio_data, audio_lengths)
 

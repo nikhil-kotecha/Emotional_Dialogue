@@ -4,3 +4,4 @@ cv_corpus_v1
 .idea/*
 models/__pycache__/*
 utils/__pycache__/*
+dialogue_data_check.ipynb
