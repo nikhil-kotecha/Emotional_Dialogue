@@ -1,9 +1,13 @@
 # coding=utf-8
 
 from __future__ import print_function
-import cPickle as pickle ### https://docs.python.org/2/library/pickle.html
-import config
+
 import random
+
+import cPickle as pickle  ### https://docs.python.org/2/library/pickle.html
+
+from utils import config
+
 
 ## general helper functions
 class Data_Reader:

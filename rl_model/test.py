@@ -1,19 +1,19 @@
 #-*- coding: utf-8 -*-
 
+# Copied in deep_rl_chat_train.ipynb for ease of grading
+
 from __future__ import print_function
 
-from gensim.models import KeyedVectors
-import data_parser
-import config
-
-from model import Seq2Seq_chatbot
-import tensorflow as tf
-import numpy as np
-
 import re
-import os
 import sys
-import time
+
+import numpy as np
+import tensorflow as tf
+from gensim.models import KeyedVectors
+
+from utils import config
+from .data_parser import *
+from .model import Seq2Seq_chatbot
 
 #=====================================================
 # Global Parameters
@@ -48,7 +48,7 @@ def test(model_path=default_model_path):
 
     word_vector = KeyedVectors.load_word2vec_format('model/word_vector.bin', binary=True)
 
-    _, ixtoword, bias_init_vector = data_parser.preProBuildWordVocab(word_count_threshold=word_count_threshold)
+    _, ixtoword, bias_init_vector = preProBuildWordVocab(word_count_threshold=word_count_threshold)
 
     model = Seq2Seq_chatbot(
             dim_wordvec=dim_wordvec,

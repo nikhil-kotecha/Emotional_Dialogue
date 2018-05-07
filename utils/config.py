@@ -1,10 +1,10 @@
-# path to training data
+# path to chat training data
 training_data_path = 'data/conversations_lenmax22_formersents2_with_former'
 
-# path to all_words
+# path to chat all_words
 all_words_path = 'data/all_words.txt'
 
-# training parameters 
+# training parameters for rl chat model
 CHECKPOINT = True
 train_model_path = 'model'
 train_model_name = 'model-55'
@@ -22,7 +22,7 @@ load_list = False
 index_list_file = 'data/shuffle_index_list'
 cur_train_index = start_batch * batch_size
 
-# word count threshold
+# rl chat word count threshold
 WC_threshold = 20
 reversed_WC_threshold = 6
 

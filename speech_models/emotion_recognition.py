@@ -8,6 +8,10 @@ from utils import layers
 class ClassifyEmotion():
     """
     Classify utterances into emotions
+
+    3 Bi-directional LSTM layers followed by a dense softmax
+    Model architecture based off of emotion recognition paper by Vladimir Chernykh
+    https://github.com/vladimir-chernykh/emotion_recognition/tree/master/code/notebooks
     """
 
     def __init__(self, num_features=26, num_classes=6, num_hidden=128,

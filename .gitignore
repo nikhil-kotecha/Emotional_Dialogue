@@ -1,7 +1,10 @@
 IEMOCAP_full_release
+IEMOCAP_full_release.zip
 cv_corpus_v1
+cv_corpus_v1.tar.gz
 .ipynb_checkpoints
 .idea/*
 models/__pycache__/*
 utils/__pycache__/*
-dialogue_data_check.ipynb
+rl_model/__pycache__/*
+__pycache__/*

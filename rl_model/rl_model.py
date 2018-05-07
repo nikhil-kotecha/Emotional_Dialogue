@@ -3,7 +3,7 @@
 import tensorflow as tf
 import numpy as np
 
-##this link really helped: https://github.com/liuyuemaicha/Deep-Reinforcement-Learning-for-Dialogue-Generation-in-tensorflow
+## Reference Resource: https://github.com/liuyuemaicha/Deep-Reinforcement-Learning-for-Dialogue-Generation-in-tensorflow
 
 class PolicyGradient_chatbot():
     def __init__(self, dim_wordvec, n_words, dim_hidden, batch_size, n_encode_lstm_step, n_decode_lstm_step, bias_init_vector=None, lr=0.0001):
@@ -20,13 +20,13 @@ class PolicyGradient_chatbot():
         self.batch_size = batch_size ## not sure what batch size to use
         self.n_words = n_words ## all good
         self.n_encode_lstm_step = n_encode_lstm_step ## encode
-        self.n_decode_lstm_step = n_decode_lstm_step ### decode
+        self.n_decode_lstm_step = n_decode_lstm_step ## decode
         self.lr = lr
 
         with tf.device("/cpu:0"): ### yay cpu
             self.Wemb = tf.Variable(tf.random_uniform([n_words, dim_hidden], -0.1, 0.1), name='Wemb')
 
-#########https://www.tensorflow.org/tutorials/seq2seq#attention_wrapper_api
+######### https://www.tensorflow.org/tutorials/seq2seq#attention_wrapper_api
         self.lstm1 = tf.contrib.rnn.BasicLSTMCell(dim_hidden, state_is_tuple=False) #### maybe add the attention wrapper
         self.lstm2 = tf.contrib.rnn.BasicLSTMCell(dim_hidden, state_is_tuple=False) #### watch the basic lstm
 
@@ -126,7 +126,7 @@ class PolicyGradient_chatbot():
         word_vectors = tf.placeholder(tf.float32, [self.batch_size, self.n_encode_lstm_step, self.dim_wordvec])
 
 
-########Very similar ot before
+######## Very similar to before
         word_vectors_flat = tf.reshape(word_vectors, [-1, self.dim_wordvec])
         wordvec_emb = tf.nn.xw_plus_b(word_vectors_flat, self.encode_vector_W, self.encode_vector_b)
         wordvec_emb = tf.reshape(wordvec_emb, [self.batch_size, self.n_encode_lstm_step, self.dim_hidden])

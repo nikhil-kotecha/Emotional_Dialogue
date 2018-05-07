@@ -1,24 +1,23 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+
 ## standard imports
-import re
-import os
-import time
 import sys
 
 sys.path.append("python")
-import data_parser ### thanks neural talk
-import config
+from .data_parser import * ### thanks neural talk
+from utils import config
 
 from gensim.models import KeyedVectors ### https://radimrehurek.com/gensim/models/keyedvectors.html
-from rl_model import PolicyGradient_chatbot ### the rl model
+from .rl_model import PolicyGradient_chatbot ### the rl model
 import tensorflow as tf
 import numpy as np
 
 #
 # Global Parameters
 default_model_path = './model/RL/model-56-3000' ### this is useful to remember
+
 ## check the sample input
 ## this probably has a lot of bearing on where the model goes
 testing_data_path = 'sample_input.txt' if len(sys.argv) <= 2 else sys.argv[2]
@@ -54,10 +53,10 @@ def test(model_path=default_model_path):
     ## make sure everything is working well
     testing_data = open(testing_data_path, 'r').read().split('\n') ### get the path right
 
-    #https: // radimrehurek.com / gensim / models / keyedvectors.html
+    #https: // radimrehurek.com / gensim / speech_models / keyedvectors.html
     word_vector = KeyedVectors.load_word2vec_format('model/word_vector.bin', binary=True) ### word vector bin -- thanks gensim
 
-    _, ixtoword, bias_init_vector = data_parser.preProBuildWordVocab(word_count_threshold=word_count_threshold)
+    _, ixtoword, bias_init_vector = preProBuildWordVocab(word_count_threshold=word_count_threshold)
 ######
     ###RL model -- policy gradient
 

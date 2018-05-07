@@ -1,13 +1,15 @@
 # coding=utf-8
 
 from __future__ import print_function
-import pickle
+
 import codecs
-import re
 import os
-import time
+import pickle
+import re
+
 import numpy as np
-import config
+
+from utils import config
 
 
 ### got this from NeuralTalk2 https://github.com/karpathy/neuraltalk2

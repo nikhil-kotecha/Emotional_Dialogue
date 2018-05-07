@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from utils.layers import blstm, pblstm
-from utils.load_data import load_common_voice_data
+from utils.load_speech_data import load_common_voice_data
 
 ###########################################################################
 # Based on Seq2Seq Tutorial by Minh Thang Luong, Eugene Brevdo, Rui Zhao

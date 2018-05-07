@@ -1,20 +1,19 @@
 #-*- coding: utf-8 -*-
 
+# Copied in deep_rl_chat_train.ipynb for ease of grading
+
 from __future__ import print_function
 
-from gensim.models import KeyedVectors
-import data_parser
-import config
-
-from model import Seq2Seq_chatbot
-import tensorflow as tf
-import numpy as np
-
 import re
-import os
 import sys
-import time
 
+import numpy as np
+import tensorflow as tf
+from gensim.models import KeyedVectors
+
+from utils import config
+from .data_parser import *
+from .model import Seq2Seq_chatbot
 
 #=====================================================
 # Global Parameters

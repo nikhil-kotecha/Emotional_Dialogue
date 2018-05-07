@@ -2,25 +2,24 @@
 
 from __future__ import print_function
 
-import os
-import time
-import sys
 import copy
+import sys
+import time
+
 ##import normal stuff ^
 
 sys.path.append("python")
-from model import Seq2Seq_chatbot ## get the vanilla model
-from data_reader import Data_Reader
-import data_parser ##thank you neuraltalk
-import config
+from .model import Seq2Seq_chatbot ## get the vanilla model
+from .data_reader import Data_Reader
+from .data_parser import * ##thank you neuraltalk
+from utils import config
 import re
 
 from gensim.models import KeyedVectors ### https://radimrehurek.com/gensim/models/keyedvectors.html
-from rl_model import PolicyGradient_chatbot #https://docs.scipy.org/doc/scipy/reference/spatial.html
-from scipy import spatial
+from .rl_model import PolicyGradient_chatbot #https://docs.scipy.org/doc/scipy/reference/spatial.html
 import tensorflow as tf
 import numpy as np
-import math
+
 
 # Global Parameters
 checkpoint = config.CHECKPOINT ## usually dislike globals
